@@ -1,0 +1,37 @@
+config:
+  environments:
+    api:
+      target: 'http://localhost:5555'
+      plugins:
+        statsd:
+          host: localhost
+          port: 8125
+          prefix: 'artillery-api'
+
+  pool: 400
+
+  phases:
+    - name: Ramp up
+      duration: 15
+      arrivalRate: 50
+      rampTo: 250
+    - name: Plain
+      duration: 10
+      arrivalRate: 300
+    - name: Ramp down
+      duration: 15
+      arrivalRate: 250
+      rampTo: 50
+    - name: Stop
+      duration: 30
+      arrivalRate: 1
+
+scenarios:
+  - name: Set Balance STRESS (PUT /accounts/:id/balance)
+    flow:
+      - put:
+          url: '/accounts/1/balance'
+          json:
+            balance: 2000000
+
+
