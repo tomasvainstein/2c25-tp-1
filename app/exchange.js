@@ -1,11 +1,16 @@
 import { nanoid } from "nanoid";
-
+import StatsD from 'node-statsd'
 import { init as stateInit, getAccounts as stateAccounts, getRates as stateRates, getLog as stateLog } from "./state.js";
-import { recordBuy, recordSell } from "./metrics.js";
 
 let accounts;
 let rates;
 let log;
+
+const statsd = new StatsD({
+    host: 'graphite',
+    port: 8125,
+    prefix: 'arVault.'
+})
 
 //call to initialize the exchange service
 export async function init() {
@@ -92,11 +97,12 @@ export async function exchange(exchangeRequest) {
         exchangeResult.ok = true;
         exchangeResult.counterAmount = counterAmount;
 
-        // record metrics: selling base currency, buying counter currency
-        // sell base currency from client perspective
-        recordSell(baseCurrency, baseAmount);
-        // buy counter currency for client
-        recordBuy(counterCurrency, counterAmount);
+        // Total volume of every currency
+        statsd.increment(`exchange.volume.${baseCurrency}`, baseAmount)
+        statsd.increment(`exchange.volume.${counterCurrency}`, counterAmount)
+        // net change of internal accounts
+        statsd.increment(`exchange.net.${baseCurrency}`, baseAmount)
+        statsd.increment(`exchange.net.${counterCurrency}`, -counterAmount)
       } else {
         //could not transfer to clients' counter account, return base amount to client
         await transfer(baseAccount.id, clientBaseAccountId, baseAmount);
