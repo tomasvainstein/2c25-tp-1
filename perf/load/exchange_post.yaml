@@ -34,7 +34,7 @@ scenarios:
           json:
             baseCurrency: 'USD'
             counterCurrency: 'ARS'
-            baseAmount: 100
+            baseAmount: 1
             baseAccountId: 11
             counterAccountId: 10
 
