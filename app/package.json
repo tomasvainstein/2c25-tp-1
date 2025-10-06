@@ -13,6 +13,7 @@
     "express": "^4.21.2",
     "nanoid": "^5.1.2",
     "hot-shots": "^10.0.0",
-    "node-statsd": "^0.1.1"
+    "node-statsd": "^0.1.1",
+    "express-rate-limit": "^7.1.5"
   }
 }
