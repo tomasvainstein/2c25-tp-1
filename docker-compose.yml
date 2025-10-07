@@ -1,6 +1,8 @@
 services:
     api:
       build: ./app
+      deploy:
+        replicas: 3
 
     nginx:
         image: nginx:1.27.4
