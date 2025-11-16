@@ -1,6 +1,14 @@
 import { nanoid } from "nanoid";
 import StatsD from 'node-statsd'
-import { init as stateInit, getAccounts as stateAccounts, getRates as stateRates, getLog as stateLog } from "./state.js";
+import { 
+  init as stateInit, 
+  getAccounts as stateAccounts, 
+  getRates as stateRates, 
+  getLog as stateLog,
+  updateAccounts,
+  updateRates,
+  updateLog
+} from "./state.js";
 
 let accounts;
 let rates;
@@ -27,11 +35,12 @@ export function getAccounts() {
 }
 
 //sets balance for an account
-export function setAccountBalance(accountId, balance) {
+export async function setAccountBalance(accountId, balance) {
   const account = findAccountById(accountId);
 
   if (account != null) {
     account.balance = balance;
+    await updateAccounts(accounts);
   }
 }
 
@@ -46,11 +55,13 @@ export function getLog() {
 }
 
 //sets the exchange rate for a given pair of currencies, and the reciprocal rate as well
-export function setRate(rateRequest) {
+export async function setRate(rateRequest) {
   const { baseCurrency, counterCurrency, rate } = rateRequest;
 
   rates[baseCurrency][counterCurrency] = rate;
   rates[counterCurrency][baseCurrency] = Number((1 / rate).toFixed(5));
+  
+  await updateRates(rates);
 }
 
 //executes an exchange operation
@@ -97,6 +108,8 @@ export async function exchange(exchangeRequest) {
         exchangeResult.ok = true;
         exchangeResult.counterAmount = counterAmount;
 
+        await updateAccounts(accounts);
+
         // Total volume of every currency
         statsd.increment(`exchange.volume.${baseCurrency}`, baseAmount)
         statsd.increment(`exchange.volume.${counterCurrency}`, counterAmount)
@@ -119,6 +132,7 @@ export async function exchange(exchangeRequest) {
 
   //log the transaction and return it
   log.push(exchangeResult);
+  await updateLog(log);
 
   return exchangeResult;
 }

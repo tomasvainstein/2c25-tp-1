@@ -1,6 +1,8 @@
 services:
     api:
       build: ./app
+      links:
+            - redis
 
     nginx:
         image: nginx:1.27.4
@@ -29,6 +31,13 @@ services:
         volumes:
             - "grafana_config:/var/lib/grafana"
 
+    redis:
+        image: redis:7.2-alpine
+        ports:
+            - "6379:6379"
+        volumes:
+            - redis_data:/data
+
     cadvisor:
         image: gcr.io/cadvisor/cadvisor:v0.49.2
         links:
@@ -44,4 +53,6 @@ services:
 
 volumes:
     grafana_config:
+        driver: local
+    redis_data:
         driver: local

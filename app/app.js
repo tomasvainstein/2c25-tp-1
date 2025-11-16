@@ -109,6 +109,7 @@ app.get("/accounts", queryLimiter, (req, res) => {
   res.json(getAccounts());
 });
 
+//app.put("/accounts/:id/balance", async (req, res) => {
 app.put("/accounts/:id/balance", strictLimiter, (req, res) => {
   const accountId = req.params.id;
   const { balance } = req.body;
@@ -116,6 +117,8 @@ app.put("/accounts/:id/balance", strictLimiter, (req, res) => {
   if (!accountId || !balance) {
     return res.status(400).json({ error: "Malformed request" });
   } else {
+//    await setAccountBalance(accountId, balance);
+
     setAccountBalance(accountId, balance);
     statsd.increment('endpoints.accounts.put');
     res.json(getAccounts());
@@ -129,6 +132,7 @@ app.get("/rates", queryLimiter, (req, res) => {
   res.json(getRates());
 });
 
+//app.put("/rates", async (req, res) => {
 app.put("/rates", strictLimiter, (req, res) => {
   const { baseCurrency, counterCurrency, rate } = req.body;
 
@@ -137,6 +141,8 @@ app.put("/rates", strictLimiter, (req, res) => {
   }
 
   const newRateRequest = { ...req.body };
+//  await setRate(newRateRequest);
+
   setRate(newRateRequest);
   statsd.increment('endpoints.rates.put');
   res.json(getRates());

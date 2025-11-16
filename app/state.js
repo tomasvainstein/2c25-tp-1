@@ -1,26 +1,67 @@
-import { fileURLToPath } from "url";
-import path from "path";
-import fs from "fs";
+import { getRedisClient } from "./redis.js";
 
 let accounts = null;
 let rates = null;
 let log = null;
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const ACCOUNTS = "./state/accounts.json";
-const RATES = "./state/rates.json";
-const LOG = "./state/log.json";
+const ACCOUNTS_KEY = "arvault:accounts";
+const RATES_KEY = "arvault:rates";
+const LOG_KEY = "arvault:log";
 
 export async function init() {
-  accounts = await load(ACCOUNTS);
-  rates = await load(RATES);
-  log = await load(LOG);
+  const client = await getRedisClient();
+  
+  accounts = await loadFromRedis(client, ACCOUNTS_KEY) || await getDefaultAccounts();
+  rates = await loadFromRedis(client, RATES_KEY) || await getDefaultRates();
+  log = await loadFromRedis(client, LOG_KEY) || [];
 
-  scheduleSave(accounts, ACCOUNTS, 1000);
-  scheduleSave(rates, RATES, 5000);
-  scheduleSave(log, LOG, 1000);
+  await saveToRedis(client, ACCOUNTS_KEY, accounts);
+  await saveToRedis(client, RATES_KEY, rates);
+  await saveToRedis(client, LOG_KEY, log);
+}
+
+function getDefaultAccounts() {
+  return [
+    {
+      "id": 1,
+      "currency": "ARS",
+      "balance": 120000000
+    },
+    {
+      "id": 2,
+      "currency": "USD",
+      "balance": 60000
+    },
+    {
+      "id": 3,
+      "currency": "EUR",
+      "balance": 40000
+    },
+    {
+      "id": 4,
+      "currency": "BRL",
+      "balance": 60000
+    }
+  ];
+}
+
+function getDefaultRates() {
+  return {
+    "ARS": {
+      "BRL": 0.00360,
+      "EUR": 0.00057,
+      "USD": 0.00068
+    },
+    "BRL": {
+      "ARS": 277.3
+    },
+    "EUR": {
+      "ARS": 1741
+    },
+    "USD": {
+      "ARS": 1469
+    }
+  };
 }
 
 export function getAccounts() {
@@ -35,34 +76,39 @@ export function getLog() {
   return log;
 }
 
-async function load(fileName) {
-  const filePath = path.join(__dirname, fileName);
-
+async function loadFromRedis(client, key) {
   try {
-    await fs.promises.access(filePath);
-    const raw = await fs.promises.readFile(filePath, "utf8");
-    
-    return JSON.parse(raw);
+    const data = await client.get(key);
+    return data ? JSON.parse(data) : null;
   } catch (err) {
-    if (err.code == "ENOENT") {
-      console.error(`${filePath} not found`);
-    } else {
-      console.error(`Error loading ${filePath}:`, err);
-    }
+    console.error(`Error loading ${key} from Redis:`, err);
+    return null;
   }
 }
 
-async function save(data, fileName) {
-  const filePath = path.join(__dirname, fileName);
+async function saveToRedis(client, key, data) {
   try {
-    await fs.promises.writeFile(filePath, JSON.stringify(data, null, 2));
+    await client.set(key, JSON.stringify(data));
   } catch (err) {
-    console.error(`Error writing to ${filePath}:`, err);
+    console.error(`Error saving ${key} to Redis:`, err);
   }
 }
 
-function scheduleSave(data, fileName, period) {
-  setInterval(async () => {
-    await save(data, fileName);
-  }, period);
+export async function updateAccounts(newAccounts) {
+  accounts = newAccounts;
+  const client = await getRedisClient();
+  await saveToRedis(client, ACCOUNTS_KEY, accounts);
 }
+
+export async function updateRates(newRates) {
+  rates = newRates;
+  const client = await getRedisClient();
+  await saveToRedis(client, RATES_KEY, rates);
+}
+
+export async function updateLog(newLog) {
+  log = newLog;
+  const client = await getRedisClient();
+  await saveToRedis(client, LOG_KEY, log);
+}
+
